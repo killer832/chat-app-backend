@@ -1,6 +1,6 @@
 import { asyncHandler } from "../Utils/asyncHandler.js";
 import { ApiError } from "../Utils/ApiError.js";
-import { User } from "../Muser.model.js";
+import { User } from "../Models/user.model.js";
 import { uploadFilesOnImageKit } from "../services/imagekit.service.js";
 import { ApiResponse } from "../Utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
