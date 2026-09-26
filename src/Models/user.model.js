@@ -1,7 +1,13 @@
-import strict from "assert/strict";
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const userSchema = new mongoose.Schema({
+  fullname: {
+    type: String,
+    lowercase: true,
+    trim: true,
+  },
   username: {
     type: String,
     required: true,
@@ -29,7 +35,6 @@ const userSchema = new mongoose.Schema({
   },
   avatarFileId: {
     type: String,
-    required: true,
   },
   bio: {
     type: String,
@@ -71,6 +76,5 @@ userSchema.methods.generateRefreshTokens = function () {
     { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
   );
 };
-
 
 export const User = mongoose.model("User", userSchema);

@@ -19,9 +19,11 @@ app.use(cookieParser());
 // import routes
 
 import userRoute from "./Routes/user.route.js";
+import messageRoute from "./Routes/message.route.js";
 
 
 // routes declaration
 app.use("/api/v1/users", userRoute);
+app.use("/api/v1/messages", messageRoute);
 
 export { app };

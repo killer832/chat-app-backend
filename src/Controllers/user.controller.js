@@ -1,7 +1,7 @@
 import { asyncHandler } from "../Utils/asyncHandler.js";
 import { ApiError } from "../Utils/ApiError.js";
 import { User } from "../Models/user.model.js";
-import { uploadFilesOnImageKit } from "../services/imagekit.service.js";
+import { uploadFilesOnImageKit } from "../Services/imagekit.service.js";
 import { ApiResponse } from "../Utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
@@ -53,14 +53,14 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const avatarLocalPath = req.files?.avatar?.[0].path;
-  const coverImageLocalPath = req.files?.coverImage?.[0].path;
+  // const coverImageLocalPath = req.files?.coverImage?.[0].path;
 
   if (!avatarLocalPath) {
     throw new ApiError(409, "Avtar image is required");
   }
 
   const avatar = await uploadFilesOnImageKit(avatarLocalPath);
-  const coverImage = await uploadFilesOnImageKit(coverImageLocalPath);
+  // const coverImage = await uploadFilesOnImageKit(coverImageLocalPath);
 
   if (!avatar) {
     throw new ApiError(409, "Avtar image os required");
@@ -72,7 +72,8 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
     email,
     avatar: avatar.url,
-    coverImage: coverImage?.url || "",
+    avatarFileId: avatar.fileId,
+    // coverImage: coverImage?.url || "",
   });
 
   const createdUser = await User.findById(user._id).select(
@@ -306,6 +307,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     $set(
       {
         avatar: avatar.url,
+        avatarFileId: avatar.fileId,
       },
       { returnDocument: "after" },
     ).select("-password"),
@@ -314,77 +316,6 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, user, "Avatar updated successfully"));
-});
-
-const getUserChannelProfile = asyncHandler(async (req, res) => {
-  const { username } = req.params;
-
-  if (!username?.trim()) {
-    throw new ApiError(400, "Username is missing");
-  }
-
-  const channel = await User.aggregate([
-    {
-      $match: {
-        username: username?.toLowerCase(),
-      },
-    },
-    {
-      $lookup: {
-        from: "Subscription",
-        localField: "_id",
-        foreignField: "channel",
-        as: "subscribers",
-      },
-    },
-    {
-      $lookup: {
-        from: "Subscription",
-        localField: "_id",
-        foreignField: "subscribers",
-        as: "subscribedTo",
-      },
-    },
-    {
-      $addFields: {
-        subscribersCount: {
-          $size: "$subscribers",
-        },
-        ChannelSubscribedToCount: {
-          $size: "$subscribedTo",
-        },
-        isSubscribed: {
-          $cond: {
-            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
-            then: true,
-            else: false,
-          },
-        },
-      },
-    },
-    {
-      $project: {
-        fullname: 1,
-        username: 1,
-        subscribersCount: 1,
-        ChannelSubscribedToCount: 1,
-        isSubscribed: 1,
-        avatar: 1,
-        coverImage: 1,
-        email: 1,
-      },
-    },
-  ]);
-
-  if (!channel?.length) {
-    throw new ApiError(404, "Channel does not exist");
-  }
-
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(200, channel[0], "user channel fetched successfully"),
-    );
 });
 
 const updateUserBio = asyncHandler(async (req, res) => {
@@ -409,6 +340,26 @@ const updateUserBio = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Bio updated successfully"));
 });
 
+const getUserByUsername = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  if (!username?.trim()) {
+    throw new ApiError(400, "Username is missing");
+  }
+
+  const user = await User.findOne({ username: username?.toLowerCase() }).select(
+    "fullname username avatar",
+  );
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User fetched successfully"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -419,5 +370,6 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserBio,
-  getUserChannelProfile,
+  getUserByUsername,
+  
 };

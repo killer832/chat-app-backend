@@ -1,52 +1,42 @@
 import "dotenv/config";
 import fs from "fs";
+import { promisify } from "util";
 import ImageKit from "@imagekit/nodejs";
 import path from "path";
 
 const client = new ImageKit({
   privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
 });
+const unlink = promisify(fs.unlink);
 
 const uploadFilesOnImageKit = async (localFilePath) => {
+  if (!localFilePath) return null;
+
   try {
-    if (!localFilePath) return { message: "file path is required" };
-
-    const fileName = path.basename(localFilePath);
-
-    const response = await client.files.upload({
+    return await client.files.upload({
       file: fs.createReadStream(localFilePath),
-      fileName: fileName,
+      fileName: path.basename(localFilePath),
     });
-
-    // file has been uploaded successfully
-
-    // console.log("File uploaded successfully on imageKit", response.url);
-
-    fs.unlinkSync(localFilePath);
-
-    return response;
   } catch (error) {
-    fs.unlinkSync(localFilePath); // remove the locally store temp file as the upload gets faild
-
+    console.error("ImageKit upload failed:", error);
     return null;
+  } finally {
+    try {
+      await unlink(localFilePath);
+    } catch (error) {
+      if (error.code !== "ENOENT")
+        console.error("Unable to remove temporary upload:", error);
+    }
   }
 };
 
 const deleteFilesFromImageKit = async (fileId) => {
+  if (!fileId) return;
+
   try {
-
-    if(!fileId){
-      return {message : "File Id is requried while deleting the file"}
-    }
-
     await client.files.delete(fileId);
-    console.log(fileId)
-    console.log("file deleted successfully");
   } catch (error) {
-    console.log(
-      "something went wrong while deleting file from imageKit",
-      error,
-    );
+    console.error("ImageKit file deletion failed:", error);
   }
 };
 
